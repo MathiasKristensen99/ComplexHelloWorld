@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+  rmq:
+    image: rabbitmq:management
+    ports:
+      - 7002:5672
+      - 7003:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=application
+      - RABBITMQ_DEFAULT_PASS=pepsi
+  api:
+    build:
+      context: .
+      dockerfile: API/Dockerfile
+    ports:
+      - 7001:80
+    depends_on:
+      - rmq
+
+  seq:
+    image: datalust/seq
+    ports:
+      - 5341:5341
+      - 5342:80
+    volumes:
+      - rps_seq_data:/data
+    environment:
+      - ACCEPT_EULA=Y
+
+  featurehub:
+    image: featurehub/party-server:latest
+    restart: always
+    volumes:
+      - featurehub-h2-data:/db
+    ports:
+      - 8085:8085
+
+  greeting-service:
+    restart: always
+    build:
+      context: .
+      dockerfile: GreetingService/Dockerfile
+    depends_on:
+      - rmq
+  
+  planet-service:
+    restart: always
+    build:
+      context: .
+      dockerfile: PlanetService/Dockerfile
+    depends_on:
+      - rmq
+      
+  language-service:
+    restart: always
+    build:
+      context: .
+      dockerfile: LanguageService/Dockerfile
+    depends_on:
+      - rmq
+
+  mysqldb:
+    build:
+      context: .
+      dockerfile: Database/Dockerfile
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=MyS£creT7
+      - MYSQL_DATABASE=HelloWorld
+      - MYSQL_USER=application
+      - MYSQL_PASSWORD=pepsi
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - 7004:3306
+
+  adminer:
+    image: adminer
+    container_name: "helloworld_adminer"
+    ports:
+      - 7005:8080
+    depends_on:
+      - mysqldb
+
+volumes:
+  mysql_data:
+  rps_seq_data:
+  featurehub-h2-data:
